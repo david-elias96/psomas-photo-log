@@ -54,15 +54,9 @@ Setup: paste an Anthropic API key (from [platform.claude.com](https://platform.c
 
 ## Feedback workflow
 
-The **Feedback** button (top right) opens a short form (type, severity, summary, steps, optional diagnostics). Submitting opens a pre-filled email to **dave.elias@psomas.com** in the user's mail app — they just press Send. Every submission's subject starts with **`[Photo Log Feedback]`**.
+The **Feedback** button (top right) opens a short form (type, severity, summary, steps, optional diagnostics). Submitting opens a **pre-filled GitHub issue** on this repository — the user signs in to GitHub (free account) and clicks *Submit new issue*. All reports land under [Issues](https://github.com/david-elias96/psomas-photo-log/issues), where they can be labeled, discussed, and closed when fixed in a release. GitHub emails the maintainer automatically (repo → Watch → All activity to be sure).
 
-**One-time Outlook rule (for Dave)** to auto-file submissions into a folder:
-
-1. In Outlook, right-click your Inbox → **New Folder** → name it `Psomas Photo Log Feedback Requests`.
-2. **Settings (gear) → Mail → Rules → Add new rule** (or in classic Outlook: Home → Rules → Manage Rules & Alerts → New Rule).
-3. Condition: **Subject includes** `[Photo Log Feedback]`.
-4. Action: **Move to** → `Psomas Photo Log Feedback Requests`.
-5. Save. All feedback from everyone in the org now lands in that folder automatically.
+Because the repository is public, reports are publicly visible — the form reminds users not to include client names or confidential project details, and diagnostics deliberately exclude the project name.
 
 ## Building / updating the exe
 

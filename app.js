@@ -6,10 +6,8 @@
 
 /* ---------------- state ---------------- */
 
-const APP_VERSION = "1.3.0";
-const UPDATE_REPO = "david-elias96/psomas-photo-log"; // owner/repo on GitHub, used by the update checker
-const FEEDBACK_EMAIL = "dave.elias@psomas.com";
-const FEEDBACK_TAG = "[Photo Log Feedback]"; // Outlook rule files on this subject tag
+const APP_VERSION = "1.3.1";
+const UPDATE_REPO = "david-elias96/psomas-photo-log"; // owner/repo on GitHub — update checker + feedback issues
 
 const DEFAULT_TEMPLATES = [
   "View facing {direction} of ",
@@ -1226,41 +1224,33 @@ function setupAI() {
 
 /* ---------------- feedback ---------------- */
 
-function buildFeedbackEmail() {
+function buildFeedbackIssue() {
   const name = $("#fbName").value.trim();
-  const email = $("#fbEmail").value.trim();
   const type = $("#fbType").value;
   const sev = $("#fbSev").value;
   const summary = $("#fbSummary").value.trim();
   const details = $("#fbDetails").value.trim();
 
+  const title = `[${type === "Feature request" ? "Feature" : type}] ${summary.slice(0, 120)}`;
   const lines = [
-    "PSOMAS PHOTO LOG — FEEDBACK",
-    `Type: ${type}`,
-    `Severity: ${sev}`,
-    `Submitted by: ${name || "(not given)"}${email ? " <" + email + ">" : ""}`,
-    `Date: ${new Date().toLocaleString()}`,
+    `**Type:** ${type}   **Severity:** ${sev}`,
+    name ? `**Submitted by:** ${name}` : null,
     "",
-    `Summary: ${summary}`,
-    "",
-    "Details / steps to reproduce:",
-    details || "(none provided)",
-  ];
+    "### Details / steps to reproduce",
+    details || "_(none provided)_",
+  ].filter((l) => l !== null);
   if ($("#fbDiag").checked) {
     lines.push(
       "",
-      "--- Diagnostics ---",
-      `App version: ${APP_VERSION}`,
-      `Photos in project: ${state.photos.length}`,
-      `Project: ${state.meta.projectNumber || state.meta.projectName || "(unnamed)"}`,
-      `Platform: ${navigator.platform} — ${navigator.userAgent}`
+      "### Diagnostics",
+      `- App version: ${APP_VERSION}`,
+      `- Photos in project: ${state.photos.length}`,
+      `- Platform: ${navigator.platform} — ${navigator.userAgent}`
     );
   }
-  const subject = `${FEEDBACK_TAG} ${type}: ${summary.slice(0, 90)}`;
-  const body = lines.join("\r\n");
-  // mailto URLs have practical length limits — cap the body, full text via Copy
-  const mailto = `mailto:${FEEDBACK_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body.slice(0, 1800))}`;
-  return { subject, body, mailto };
+  const body = lines.join("\n");
+  const url = `https://github.com/${UPDATE_REPO}/issues/new?title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`;
+  return { title, body, url };
 }
 
 function setupFeedback() {
@@ -1280,26 +1270,28 @@ function setupFeedback() {
 
   $("#fbSend").addEventListener("click", () => {
     if (!validate()) return;
-    const { mailto } = buildFeedbackEmail();
+    const { url } = buildFeedbackIssue();
     const a = document.createElement("a");
-    a.href = mailto;
+    a.href = url;
+    a.target = "_blank";
+    a.rel = "noopener";
     document.body.appendChild(a);
     a.click();
     a.remove();
-    toast("Email window opened — press Send to submit.", 4000);
+    toast("GitHub opened with your report pre-filled — click “Submit new issue”.", 4500);
     close();
   });
 
   $("#fbCopy").addEventListener("click", async () => {
     if (!validate()) return;
-    const { subject, body } = buildFeedbackEmail();
-    const text = `To: ${FEEDBACK_EMAIL}\r\nSubject: ${subject}\r\n\r\n${body}`;
+    const { title, body } = buildFeedbackIssue();
+    const text = `${title}\n\n${body}\n\nSubmit at: https://github.com/${UPDATE_REPO}/issues/new`;
     try {
       await navigator.clipboard.writeText(text);
-      toast("Copied — paste into a new email to " + FEEDBACK_EMAIL);
+      toast("Copied — paste into a new issue at github.com/" + UPDATE_REPO);
     } catch (e) {
       // clipboard API can be blocked on file:// — fall back to a prompt
-      window.prompt("Copy this text (Ctrl+C), then paste into an email:", text);
+      window.prompt("Copy this text (Ctrl+C), then paste into a GitHub issue:", text);
     }
   });
 }
@@ -1527,7 +1519,7 @@ document.addEventListener("DOMContentLoaded", setup);
 /* test/debug hook */
 window.PhotoLog = {
   get state() { return state; },
-  refresh, importFiles, buildPDF, buildDOCX, bakePhoto, openProject, buildFeedbackEmail,
+  refresh, importFiles, buildPDF, buildDOCX, bakePhoto, openProject, buildFeedbackIssue,
   aiSuggestCaption, aiCaptionAll, checkForUpdates, versionNewer,
   addPhotoRecord(rec) { state.photos.push(rec); markDirty(); refresh(); },
 };

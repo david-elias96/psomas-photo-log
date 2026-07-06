@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Photo Log</title>
-<link rel="stylesheet" href="styles.css?v=1.3.0">
+<link rel="stylesheet" href="styles.css?v=1.3.1">
 </head>
 <body>
 
@@ -198,10 +198,7 @@
       <button class="x" id="fbClose" title="Close">&#10005;</button>
     </header>
     <div class="fb-body">
-      <div class="row2">
-        <div class="field"><label for="fbName">Your name</label><input type="text" id="fbName"></div>
-        <div class="field"><label for="fbEmail">Your email</label><input type="text" id="fbEmail" placeholder="name@psomas.com"></div>
-      </div>
+      <div class="field"><label for="fbName">Your name (optional)</label><input type="text" id="fbName"></div>
       <div class="row2">
         <div class="field"><label for="fbType">Type</label>
           <select id="fbType"><option>Bug</option><option>Feature request</option><option>Question</option></select>
@@ -217,14 +214,15 @@
         <textarea id="fbDetails" rows="6" placeholder="What happened? What did you expect? Steps to reproduce…"></textarea>
       </div>
       <label class="fb-check"><input type="checkbox" id="fbDiag" checked> Include diagnostics (app version, photo count, browser)</label>
-      <p class="hint">Submitting opens a pre-filled email to <b>dave.elias@psomas.com</b> in your mail app — just press Send.
-      If no email window opens, use <b>Copy to Clipboard</b> and paste into a new email.</p>
+      <p class="hint">Submitting opens a <b>pre-filled GitHub issue</b> in your browser — sign in to GitHub
+      (free account) and click <b>Submit new issue</b>. Reports are publicly visible, so please don't
+      include client names or confidential project details.</p>
     </div>
     <footer>
       <button id="fbCopy">Copy to Clipboard</button>
       <span class="spacer"></span>
       <button id="fbCancel">Cancel</button>
-      <button id="fbSend" class="primary">Open Email</button>
+      <button id="fbSend" class="primary">Open GitHub Issue</button>
     </footer>
   </div>
 </div>
@@ -241,6 +239,6 @@
 <script src="lib/exifr.umd.js"></script>
 <script src="lib/jspdf.umd.min.js"></script>
 <script src="lib/docx.umd.js"></script>
-<script src="app.js?v=1.3.0"></script>
+<script src="app.js?v=1.3.1"></script>
 </body>
 </html>
