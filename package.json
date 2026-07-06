@@ -1,0 +1,37 @@
+{
+  "name": "psomas-photo-log",
+  "version": "1.3.0",
+  "description": "Psomas Photo Log — build photographic logs for field reports",
+  "author": "Psomas",
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win portable"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.psomas.photolog",
+    "productName": "Psomas Photo Log",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "electron/**",
+      "index.html",
+      "app.js",
+      "styles.css",
+      "lib/**",
+      "build/icon.ico"
+    ],
+    "win": {
+      "target": "portable",
+      "icon": "build/icon.ico"
+    },
+    "portable": {
+      "artifactName": "Psomas Photo Log.exe"
+    }
+  }
+}

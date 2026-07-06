@@ -1,0 +1,6 @@
+# build output — the exe is distributed via GitHub Releases, not the repo
+dist/
+
+# local scratch
+*.photolog
+node_modules/

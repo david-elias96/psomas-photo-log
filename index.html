@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Photo Log</title>
+<link rel="stylesheet" href="styles.css?v=1.3.0">
+</head>
+<body>
+
+<header id="topbar">
+  <div class="brand">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+    Photo Log
+  </div>
+  <span id="projectTitle"></span>
+  <div class="spacer"></div>
+  <button id="btnNew">New</button>
+  <button id="btnOpen">Open…</button>
+  <button id="btnSave">Save Project</button>
+  <span class="sep" style="width:1px;height:22px;background:var(--border);margin:0 4px"></span>
+  <button id="btnImport" class="primary">+ Import Photos</button>
+  <button id="btnSortDate" title="Sort all photos by EXIF capture date">Sort by Date</button>
+  <button id="btnCaptions" title="Step through photos and edit captions quickly">Caption Editor</button>
+  <button id="btnQC" title="Quality-control check">QC <span id="qcBadge" class="badge ok">0</span></button>
+  <button id="btnFeedback" class="ghost" title="Report a bug or suggest an improvement">Feedback</button>
+</header>
+
+<div id="layout">
+  <aside id="sidebar">
+    <section>
+      <h2>Project Information</h2>
+      <div class="field"><label for="m_projectName">Project Name</label><input type="text" id="m_projectName" data-meta="projectName" placeholder="e.g. Former ABC Facility Phase II ESA"></div>
+      <div class="row2">
+        <div class="field"><label for="m_projectNumber">Project No.</label><input type="text" id="m_projectNumber" data-meta="projectNumber" placeholder="e.g. 7-1234.01"></div>
+        <div class="field"><label for="m_date">Date(s)</label><input type="text" id="m_date" data-meta="dateRange" placeholder="e.g. June 2026"></div>
+      </div>
+      <div class="field"><label for="m_client">Client</label><input type="text" id="m_client" data-meta="client" placeholder="Client name"></div>
+      <div class="field"><label for="m_site">Site / Location</label><input type="text" id="m_site" data-meta="site" placeholder="Site address or description"></div>
+      <div class="field"><label for="m_photographer">Photographer</label><input type="text" id="m_photographer" data-meta="photographer" placeholder="Name"></div>
+      <div class="field"><label for="m_footer">Footer Text</label><input type="text" id="m_footer" data-meta="footerText" placeholder="e.g. Psomas — Photographic Log"></div>
+    </section>
+
+    <section>
+      <h2>Export</h2>
+      <div class="layout-picker" id="layoutPicker">
+        <button data-layout="1">1 / page</button>
+        <button data-layout="2" class="active">2 / page</button>
+        <button data-layout="4">4 / page</button>
+      </div>
+      <div class="checks">
+        <label><input type="checkbox" id="s_incDate" data-setting="incDate" checked> Date taken</label>
+        <label><input type="checkbox" id="s_incGps" data-setting="incGps" checked> GPS coords</label>
+        <label><input type="checkbox" id="s_incDir" data-setting="incDir" checked> Facing</label>
+        <label><input type="checkbox" id="s_incFile" data-setting="incFile"> File name</label>
+      </div>
+      <div class="export-btns">
+        <button id="btnPDF" class="primary">Export PDF</button>
+        <button id="btnDOCX">Export DOCX</button>
+      </div>
+      <p class="hint">PDF for final deliverables; DOCX to drop into a report appendix and edit further.</p>
+    </section>
+
+    <section>
+      <h2>AI Captions</h2>
+      <div class="field"><label for="ai_key">Anthropic API key</label>
+        <input type="password" id="ai_key" placeholder="sk-ant-…" autocomplete="off">
+      </div>
+      <div class="field"><label for="ai_model">Model</label>
+        <select id="ai_model">
+          <option value="claude-opus-4-8">Claude Opus 4.8 — best quality</option>
+          <option value="claude-haiku-4-5">Claude Haiku 4.5 — fastest &amp; cheapest</option>
+        </select>
+      </div>
+      <button id="btnAICaptionAll" style="width:100%">&#10024; Draft captions for all uncaptioned</button>
+      <p class="hint">Claude looks at each photo and drafts a caption — always review before export.
+      Photos are sent securely to the Anthropic API; the key is stored only on this computer.
+      Keys: <b>platform.claude.com</b> &rarr; API keys.</p>
+    </section>
+
+    <section>
+      <h2>Caption Templates</h2>
+      <div id="templateList"></div>
+      <div id="tplAddRow">
+        <input type="text" id="tplNew" placeholder="New template…">
+        <button id="tplAdd">Add</button>
+      </div>
+      <p class="hint">Use in the Caption Editor. Tokens: <b>{n}</b> photo no., <b>{direction}</b>, <b>{date}</b>, <b>{file}</b>.</p>
+    </section>
+
+    <section>
+      <h2>Project Stats</h2>
+      <div id="stats"></div>
+    </section>
+  </aside>
+
+  <main id="main">
+    <div id="empty">
+      <div class="big">&#128247;</div>
+      <h3>No photos yet</h3>
+      <p>Click <b>+ Import Photos</b> or drag &amp; drop image files anywhere on this area.<br>
+      Photos are auto-numbered in import order and renumber automatically when you reorder or delete.</p>
+    </div>
+    <div id="grid"></div>
+  </main>
+
+  <aside id="qcPanel" hidden>
+    <h2>QC Review</h2>
+    <div class="sub">Click an item to open it in the Caption Editor.</div>
+    <div id="qcList"></div>
+  </aside>
+</div>
+
+<!-- Caption editor modal -->
+<div class="modal-back" id="capModal" hidden>
+  <div class="modal">
+    <header>
+      <h3>Caption Editor</h3>
+      <button class="x" id="capClose" title="Close (Esc)">&#10005;</button>
+    </header>
+    <div id="capBody">
+      <div id="capImgWrap"><img id="capImg" alt=""></div>
+      <div id="capForm">
+        <div class="photoLabel" id="capLabel"></div>
+        <div class="exifLine" id="capExif"></div>
+        <div class="field"><label>Caption</label><textarea id="capText" placeholder="Describe the photo…"></textarea></div>
+        <div class="field" style="max-width:160px"><label>Facing (direction)</label><input type="text" id="capDir" placeholder="e.g. NW"></div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <label style="font-size:.78rem;color:var(--muted);flex:1">Templates — click to insert</label>
+          <button id="capAI" type="button" title="Have Claude draft a caption from the photo">&#10024; Suggest caption</button>
+        </div>
+        <div id="capChips"></div>
+      </div>
+    </div>
+    <footer>
+      <span id="capPos"></span>
+      <span class="spacer"></span>
+      <span class="hint"><kbd>Ctrl</kbd>+<kbd>Enter</kbd> = next &nbsp; <kbd>Esc</kbd> = close</span>
+      <button id="capPrev">&#9664; Prev</button>
+      <button id="capNext" class="primary">Next &#9654;</button>
+    </footer>
+  </div>
+</div>
+
+<!-- Annotation modal -->
+<div class="modal-back" id="annoModal" hidden>
+  <div class="modal">
+    <header>
+      <h3 id="annoTitle">Annotate</h3>
+      <button class="x" id="annoClose" title="Close without saving">&#10005;</button>
+    </header>
+    <div id="annoTools">
+      <div class="group">
+        <button class="tool" data-tool="arrow" title="Arrow">&#10230; Arrow</button>
+        <button class="tool" data-tool="rect" title="Rectangle">&#9645; Box</button>
+        <button class="tool" data-tool="ellipse" title="Ellipse">&#9711; Circle</button>
+        <button class="tool" data-tool="draw" title="Freehand">&#9998; Draw</button>
+        <button class="tool" data-tool="text" title="Text label">T Text</button>
+        <button class="tool" data-tool="redact" title="Solid black redaction box">&#9632; Redact</button>
+      </div>
+      <div class="sep"></div>
+      <div class="group" id="annoColors">
+        <button class="swatch active" data-color="#e02b2b" style="background:#e02b2b"></button>
+        <button class="swatch" data-color="#ffd400" style="background:#ffd400"></button>
+        <button class="swatch" data-color="#1d6fe0" style="background:#1d6fe0"></button>
+        <button class="swatch" data-color="#ffffff" style="background:#fff"></button>
+        <button class="swatch" data-color="#000000" style="background:#000"></button>
+      </div>
+      <div class="sep"></div>
+      <div class="group">
+        <select id="annoSize" title="Line / text size" style="width:auto">
+          <option value="S">Small</option>
+          <option value="M" selected>Medium</option>
+          <option value="L">Large</option>
+        </select>
+      </div>
+      <div class="sep"></div>
+      <div class="group">
+        <button id="annoUndo">Undo</button>
+        <button id="annoClear" class="danger">Clear All</button>
+      </div>
+    </div>
+    <div id="annoCanvasWrap"><canvas id="annoCanvas"></canvas></div>
+    <footer>
+      <span class="hint" style="align-self:center">Annotations stay editable — they are flattened onto the image only in exports. Redaction boxes are solid black.</span>
+      <span class="spacer"></span>
+      <button id="annoCancel">Cancel</button>
+      <button id="annoSave" class="primary">Save Annotations</button>
+    </footer>
+  </div>
+</div>
+
+<!-- Feedback modal -->
+<div class="modal-back" id="fbModal" hidden>
+  <div class="modal" style="width:580px">
+    <header>
+      <h3>Provide Feedback</h3>
+      <button class="x" id="fbClose" title="Close">&#10005;</button>
+    </header>
+    <div class="fb-body">
+      <div class="row2">
+        <div class="field"><label for="fbName">Your name</label><input type="text" id="fbName"></div>
+        <div class="field"><label for="fbEmail">Your email</label><input type="text" id="fbEmail" placeholder="name@psomas.com"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label for="fbType">Type</label>
+          <select id="fbType"><option>Bug</option><option>Feature request</option><option>Question</option></select>
+        </div>
+        <div class="field"><label for="fbSev">Severity</label>
+          <select id="fbSev"><option>Low</option><option selected>Medium</option><option>High</option><option>Blocking</option></select>
+        </div>
+      </div>
+      <div class="field"><label for="fbSummary">Summary <span style="color:var(--danger)">*</span></label>
+        <input type="text" id="fbSummary" placeholder="One line describing the issue or idea">
+      </div>
+      <div class="field"><label for="fbDetails">Details / steps to reproduce</label>
+        <textarea id="fbDetails" rows="6" placeholder="What happened? What did you expect? Steps to reproduce…"></textarea>
+      </div>
+      <label class="fb-check"><input type="checkbox" id="fbDiag" checked> Include diagnostics (app version, photo count, browser)</label>
+      <p class="hint">Submitting opens a pre-filled email to <b>dave.elias@psomas.com</b> in your mail app — just press Send.
+      If no email window opens, use <b>Copy to Clipboard</b> and paste into a new email.</p>
+    </div>
+    <footer>
+      <button id="fbCopy">Copy to Clipboard</button>
+      <span class="spacer"></span>
+      <button id="fbCancel">Cancel</button>
+      <button id="fbSend" class="primary">Open Email</button>
+    </footer>
+  </div>
+</div>
+
+<div id="busy" hidden>
+  <div class="spinner"></div>
+  <div id="busyText">Working…</div>
+</div>
+<div id="toast"></div>
+
+<input type="file" id="fileInput" multiple accept="image/*" hidden>
+<input type="file" id="openInput" accept=".photolog,.json" hidden>
+
+<script src="lib/exifr.umd.js"></script>
+<script src="lib/jspdf.umd.min.js"></script>
+<script src="lib/docx.umd.js"></script>
+<script src="app.js?v=1.3.0"></script>
+</body>
+</html>
