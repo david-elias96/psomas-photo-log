@@ -3,7 +3,7 @@
    gives it a window, an icon, and hands mailto:/http(s): links to the OS. */
 "use strict";
 
-const { app, BrowserWindow, shell } = require("electron");
+const { app, BrowserWindow, dialog, shell } = require("electron");
 const path = require("path");
 const fs = require("fs");
 
@@ -27,6 +27,35 @@ function createWindow() {
   });
 
   win.loadFile(path.join(__dirname, "..", "index.html"));
+
+  // The renderer's beforeunload guard silently blocks window close in Electron
+  // (no dialog is shown, the X appears dead, and orphan processes pile up).
+  // Own the close here instead: ask about unsaved changes with a native dialog,
+  // then destroy() — which bypasses beforeunload — so the window always closes.
+  let closing = false;
+  win.on("close", (e) => {
+    if (closing) return;
+    e.preventDefault();
+    win.webContents
+      .executeJavaScript("!!(window.PhotoLog && window.PhotoLog.dirty)", true)
+      .catch(() => false)
+      .then((dirty) => {
+        if (dirty) {
+          const choice = dialog.showMessageBoxSync(win, {
+            type: "warning",
+            buttons: ["Close Without Saving", "Cancel"],
+            defaultId: 1,
+            cancelId: 1,
+            title: "Unsaved changes",
+            message: "This photo log has unsaved changes.",
+            detail: "Use Save Project in the app to keep them, or close anyway to discard.",
+          });
+          if (choice !== 0) return;
+        }
+        closing = true;
+        win.destroy();
+      });
+  });
 
   // feedback form / external links: hand off to the default mail client / browser
   win.webContents.setWindowOpenHandler(({ url }) => {

@@ -479,6 +479,29 @@ kbd {
 }
 #annoModal footer .spacer { flex: 1; }
 
+/* in-app confirm/prompt dialog */
+.modal.dialog { width: 460px; padding-top: 4px; }
+.modal.dialog .dlg-msg {
+  padding: 18px 18px 6px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+.modal.dialog .dlg-input {
+  margin: 6px 18px 4px;
+  width: calc(100% - 36px);
+}
+.modal.dialog footer {
+  display: flex;
+  gap: 8px;
+  padding: 12px 18px 14px;
+}
+.modal.dialog footer .spacer { flex: 1; }
+.modal.dialog .dlg-ok.danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+
 /* feedback modal */
 .fb-body { padding: 12px 16px; overflow-y: auto; }
 .fb-check {

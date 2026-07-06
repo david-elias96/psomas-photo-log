@@ -1,0 +1,29 @@
+name: Build & Release
+
+# Push a version tag (e.g. v1.4.0) and this workflow builds the portable exe
+# on GitHub's Windows runners and publishes it as a release — no local build
+# environment needed. Users' apps then show the update banner automatically.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install build dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Build and publish release
+        run: npx electron-builder --win portable --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

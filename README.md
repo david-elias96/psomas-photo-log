@@ -12,13 +12,17 @@ The app checks GitHub once at launch and shows a banner when a newer version is 
 
 ## Publishing an update (maintainer)
 
+Releases are built by GitHub Actions — no local build environment needed:
+
 1. Make changes; bump the version in `package.json`, `APP_VERSION` in `app.js`, and the `?v=` query strings in `index.html`.
-2. `powershell -ExecutionPolicy Bypass -File .\build-exe.ps1`
-3. Commit and push, then publish the release (this is what makes users' apps show the update banner):
+2. Commit, push, and push a matching version tag:
    ```powershell
    git add -A; git commit -m "v1.x.y - what changed"; git push
-   gh release create v1.x.y ".\dist\Psomas Photo Log.exe" --title "v1.x.y" --notes "What changed"
+   git tag v1.x.y; git push origin v1.x.y
    ```
+3. GitHub builds the exe on its Windows runners and publishes the release automatically (~5 min — watch under the repo's **Actions** tab). Once it's live, users' apps show the update banner.
+
+`build-exe.ps1` still works for building/testing a local exe without releasing.
 
 ## Quick start
 

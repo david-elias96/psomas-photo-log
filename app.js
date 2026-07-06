@@ -6,7 +6,7 @@
 
 /* ---------------- state ---------------- */
 
-const APP_VERSION = "1.3.1";
+const APP_VERSION = "1.4.0";
 const UPDATE_REPO = "david-elias96/psomas-photo-log"; // owner/repo on GitHub — update checker + feedback issues
 
 const DEFAULT_TEMPLATES = [
@@ -63,6 +63,50 @@ function esc(s) {
   return String(s ?? "").replace(/[&<>"']/g, (c) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
+
+/* In-app replacements for window.confirm/prompt/alert — the native dialogs
+   freeze text inputs in Electron until the window is blurred (Chromium bug),
+   which made captions uneditable after deleting a photo. */
+function appDialog({ message, input = null, okText = "OK", cancelText = "Cancel", danger = false }) {
+  return new Promise((resolve) => {
+    const back = document.createElement("div");
+    back.className = "modal-back";
+    back.innerHTML = `
+      <div class="modal dialog">
+        <div class="dlg-msg"></div>
+        ${input !== null ? '<input type="text" class="dlg-input">' : ""}
+        <footer>
+          <span class="spacer"></span>
+          <button class="dlg-cancel"></button>
+          <button class="dlg-ok primary"></button>
+        </footer>
+      </div>`;
+    back.querySelector(".dlg-msg").textContent = message;
+    back.querySelector(".dlg-ok").textContent = okText;
+    back.querySelector(".dlg-cancel").textContent = cancelText;
+    if (danger) back.querySelector(".dlg-ok").classList.add("danger");
+    const inp = back.querySelector(".dlg-input");
+    if (inp) inp.value = input;
+    const onKey = (e) => {
+      if (e.key === "Escape") { e.stopPropagation(); done(inp ? null : false); }
+      else if (e.key === "Enter" && (!inp || document.activeElement === inp)) { e.stopPropagation(); done(inp ? inp.value : true); }
+    };
+    const done = (val) => {
+      document.removeEventListener("keydown", onKey, true);
+      back.remove();
+      resolve(val);
+    };
+    back.querySelector(".dlg-ok").addEventListener("click", () => done(inp ? inp.value : true));
+    back.querySelector(".dlg-cancel").addEventListener("click", () => done(inp ? null : false));
+    document.addEventListener("keydown", onKey, true);
+    document.body.appendChild(back);
+    (inp || back.querySelector(".dlg-ok")).focus();
+    if (inp) inp.select();
+  });
+}
+const appConfirm = (message, okText = "OK", danger = false) =>
+  appDialog({ message, okText, danger });
+const appPrompt = (message, value = "") => appDialog({ message, input: value });
 
 let toastTimer = null;
 function toast(msg, ms = 2600) {
@@ -320,12 +364,14 @@ function buildCard(p, i) {
 
 function indexOf(id) { return state.photos.findIndex((p) => p.id === id); }
 
-function deletePhoto(id) {
+async function deletePhoto(id) {
   const i = indexOf(id);
   if (i < 0) return;
   const p = state.photos[i];
-  if (confirm(`Delete Photo ${i + 1} (${p.fileName})? Remaining photos renumber automatically.`)) {
-    state.photos.splice(indexOf(id), 1);
+  if (await appConfirm(`Delete Photo ${i + 1} (${p.fileName})? Remaining photos renumber automatically.`, "Delete", true)) {
+    const j = indexOf(id);
+    if (j < 0) return;
+    state.photos.splice(j, 1);
     markDirty(); refresh();
   }
 }
@@ -614,11 +660,12 @@ function setupAnnotator() {
     const [x, y] = annoPos(e);
     const sz = SIZES[anno.size];
     if (anno.tool === "text") {
-      const txt = prompt("Label text:");
-      if (txt && txt.trim()) {
-        anno.ops.push({ tool: "text", x, y, text: txt.trim(), color: anno.color, size: sz.f });
-        annoRedraw();
-      }
+      appPrompt("Label text:").then((txt) => {
+        if (txt && txt.trim()) {
+          anno.ops.push({ tool: "text", x, y, text: txt.trim(), color: anno.color, size: sz.f });
+          annoRedraw();
+        }
+      });
       return;
     }
     anno.drawing = true;
@@ -673,8 +720,10 @@ function setupAnnotator() {
 
   $("#annoSize").addEventListener("change", (e) => { anno.size = e.target.value; });
   $("#annoUndo").addEventListener("click", () => { anno.ops.pop(); annoRedraw(); });
-  $("#annoClear").addEventListener("click", () => {
-    if (anno.ops.length && confirm("Remove all annotations from this photo?")) { anno.ops = []; annoRedraw(); }
+  $("#annoClear").addEventListener("click", async () => {
+    if (anno.ops.length && await appConfirm("Remove all annotations from this photo?", "Clear All", true)) {
+      anno.ops = []; annoRedraw();
+    }
   });
 
   const close = () => { $("#annoModal").hidden = true; anno.img = null; };
@@ -1160,7 +1209,7 @@ async function aiCaptionOne(photoId) {
   const idx = indexOf(photoId);
   const p = state.photos[idx];
   if (!p) return;
-  if (p.caption.trim() && !confirm(`Photo ${idx + 1} already has a caption. Replace it with an AI draft?`)) return;
+  if (p.caption.trim() && !(await appConfirm(`Photo ${idx + 1} already has a caption. Replace it with an AI draft?`, "Replace"))) return;
   busy(`Claude is drafting a caption for Photo ${idx + 1}…`);
   try {
     p.caption = await aiSuggestCaption(p, idx);
@@ -1181,7 +1230,7 @@ async function aiCaptionAll() {
   if (!aiGetKey()) { toast("Enter your Anthropic API key under AI Captions first.", 4500); return; }
   const targets = state.photos.filter((p) => !p.caption.trim());
   if (!targets.length) { toast("Every photo already has a caption."); return; }
-  if (!confirm(`Have Claude draft captions for ${targets.length} uncaptioned photo${targets.length === 1 ? "" : "s"}?\n\nDrafts appear in the caption boxes for your review — nothing is exported automatically.`)) return;
+  if (!(await appConfirm(`Have Claude draft captions for ${targets.length} uncaptioned photo${targets.length === 1 ? "" : "s"}? Drafts appear in the caption boxes for your review — nothing is exported automatically.`, "Draft Captions"))) return;
 
   let done = 0, failed = 0;
   for (const p of targets) {
@@ -1290,8 +1339,8 @@ function setupFeedback() {
       await navigator.clipboard.writeText(text);
       toast("Copied — paste into a new issue at github.com/" + UPDATE_REPO);
     } catch (e) {
-      // clipboard API can be blocked on file:// — fall back to a prompt
-      window.prompt("Copy this text (Ctrl+C), then paste into a GitHub issue:", text);
+      // clipboard API can be blocked on file:// — fall back to a copyable dialog
+      await appPrompt("Copy this text (Ctrl+C), then paste into a GitHub issue:", text);
     }
   });
 }
@@ -1365,14 +1414,14 @@ async function openProject(file) {
     toast(`Opened project with ${state.photos.length} photos.`);
   } catch (e) {
     console.error(e);
-    alert("Could not open project file:\n" + e.message);
+    toast("Could not open project file: " + e.message, 7000);
   } finally {
     busyDone();
   }
 }
 
-function newProject() {
-  if (dirty && !confirm("Discard unsaved changes and start a new project?")) return;
+async function newProject() {
+  if (dirty && !(await appConfirm("Discard unsaved changes and start a new project?", "Discard", true))) return;
   state = blankState();
   dirty = false;
   syncFormsFromState();
@@ -1413,11 +1462,13 @@ function setup() {
   // topbar
   $("#btnNew").addEventListener("click", newProject);
   $("#btnOpen").addEventListener("click", () => $("#openInput").click());
-  $("#openInput").addEventListener("change", (e) => {
-    if (e.target.files[0]) {
-      if (!dirty || confirm("Discard unsaved changes and open another project?")) openProject(e.target.files[0]);
-    }
+  $("#openInput").addEventListener("change", async (e) => {
+    const file = e.target.files[0];
     e.target.value = "";
+    if (!file) return;
+    if (!dirty || (await appConfirm("Discard unsaved changes and open another project?", "Open", true))) {
+      openProject(file);
+    }
   });
   $("#btnSave").addEventListener("click", saveProject);
   $("#btnImport").addEventListener("click", () => $("#fileInput").click());
@@ -1519,6 +1570,7 @@ document.addEventListener("DOMContentLoaded", setup);
 /* test/debug hook */
 window.PhotoLog = {
   get state() { return state; },
+  get dirty() { return dirty; },  // read by the Electron shell on window close
   refresh, importFiles, buildPDF, buildDOCX, bakePhoto, openProject, buildFeedbackIssue,
   aiSuggestCaption, aiCaptionAll, checkForUpdates, versionNewer,
   addPhotoRecord(rec) { state.photos.push(rec); markDirty(); refresh(); },
