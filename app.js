@@ -6,7 +6,7 @@
 
 /* ---------------- state ---------------- */
 
-const APP_VERSION = "1.4.0";
+const APP_VERSION = "1.4.1";
 const UPDATE_REPO = "david-elias96/psomas-photo-log"; // owner/repo on GitHub — update checker + feedback issues
 
 const DEFAULT_TEMPLATES = [
@@ -465,6 +465,46 @@ function renderTemplates() {
     });
     wrap.appendChild(div);
   });
+}
+
+function exportTemplates() {
+  if (!state.templates.length) { toast("No templates to export."); return; }
+  const blob = new Blob(
+    [JSON.stringify({ app: "photo-log-templates", version: 1, templates: state.templates }, null, 2)],
+    { type: "application/json" }
+  );
+  saveBlob(blob, "photo-log-templates.phototemplates");
+  toast("Templates exported — share the file with your team.");
+}
+
+async function importTemplatesFile(file) {
+  try {
+    const data = JSON.parse(await file.text());
+    const list = Array.isArray(data) ? data
+      : (data && data.app === "photo-log-templates" && Array.isArray(data.templates)) ? data.templates
+      : null;
+    if (!list) throw new Error("not a Photo Log template file");
+    // keep original text (trailing spaces are intentional in templates);
+    // trim only for duplicate comparison
+    const incoming = list.map((t) => String(t)).filter((t) => t.trim());
+    if (!incoming.length) throw new Error("the file contains no templates");
+    const existing = new Set(state.templates.map((t) => t.trim()));
+    const seen = new Set();
+    const fresh = incoming.filter((t) => {
+      const k = t.trim();
+      if (existing.has(k) || seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+    fresh.forEach((t) => state.templates.push(t));
+    storeTemplates(); markDirty(); renderTemplates(); renderCapChips();
+    const dup = incoming.length - fresh.length;
+    toast(fresh.length
+      ? `Imported ${fresh.length} template${fresh.length === 1 ? "" : "s"}${dup ? ` (${dup} duplicate${dup === 1 ? "" : "s"} skipped)` : ""}.`
+      : "All templates in that file are already in your list.", 5000);
+  } catch (err) {
+    toast("Could not import templates: " + err.message, 6000);
+  }
 }
 
 /* ---------------- caption editor modal ---------------- */
@@ -1504,6 +1544,13 @@ function setup() {
     storeTemplates(); markDirty(); renderTemplates(); renderCapChips();
   });
   $("#tplNew").addEventListener("keydown", (e) => { if (e.key === "Enter") $("#tplAdd").click(); });
+  $("#tplExport").addEventListener("click", exportTemplates);
+  $("#tplImport").addEventListener("click", () => $("#tplInput").click());
+  $("#tplInput").addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    e.target.value = "";
+    if (file) importTemplatesFile(file);
+  });
 
   // caption modal
   $("#capClose").addEventListener("click", closeCaptionEditor);
@@ -1572,6 +1619,6 @@ window.PhotoLog = {
   get state() { return state; },
   get dirty() { return dirty; },  // read by the Electron shell on window close
   refresh, importFiles, buildPDF, buildDOCX, bakePhoto, openProject, buildFeedbackIssue,
-  aiSuggestCaption, aiCaptionAll, checkForUpdates, versionNewer,
+  aiSuggestCaption, aiCaptionAll, checkForUpdates, versionNewer, importTemplatesFile,
   addPhotoRecord(rec) { state.photos.push(rec); markDirty(); refresh(); },
 };

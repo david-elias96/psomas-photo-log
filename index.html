@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Photo Log</title>
-<link rel="stylesheet" href="styles.css?v=1.4.0">
+<link rel="stylesheet" href="styles.css?v=1.4.1">
 </head>
 <body>
 
@@ -85,7 +85,12 @@
         <input type="text" id="tplNew" placeholder="New template…">
         <button id="tplAdd">Add</button>
       </div>
-      <p class="hint">Use in the Caption Editor. Tokens: <b>{n}</b> photo no., <b>{direction}</b>, <b>{date}</b>, <b>{file}</b>.</p>
+      <div class="row2" style="margin-top:8px">
+        <button id="tplImport">Import file…</button>
+        <button id="tplExport">Export file</button>
+      </div>
+      <p class="hint">Use in the Caption Editor. Tokens: <b>{n}</b> photo no., <b>{direction}</b>, <b>{date}</b>, <b>{file}</b>.
+      Export your templates to a file that teammates can import into any project.</p>
     </section>
 
     <section>
@@ -235,10 +240,11 @@
 
 <input type="file" id="fileInput" multiple accept="image/*" hidden>
 <input type="file" id="openInput" accept=".photolog,.json" hidden>
+<input type="file" id="tplInput" accept=".phototemplates,.json" hidden>
 
 <script src="lib/exifr.umd.js"></script>
 <script src="lib/jspdf.umd.min.js"></script>
 <script src="lib/docx.umd.js"></script>
-<script src="app.js?v=1.4.0"></script>
+<script src="app.js?v=1.4.1"></script>
 </body>
 </html>
